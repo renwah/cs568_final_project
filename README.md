@@ -42,6 +42,21 @@ A web-based tool that assesses the quality of prompts using machine learning and
    conda activate prompt-quality
    ```
 
+   Alternative setup without Conda:
+   ```bash
+   # Create a virtual environment
+   python -m venv venv
+
+   # Activate the virtual environment
+   # On Windows:
+   .\venv\Scripts\activate
+   # On macOS/Linux:
+   source venv/bin/activate
+
+   # Upgrade pip (recommended)
+   python -m pip install --upgrade pip
+   ```
+
 3. Install dependencies:
    ```bash
    cd api
