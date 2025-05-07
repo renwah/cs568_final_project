@@ -50,12 +50,16 @@
             background-color: #e0e0e0;
             overflow: hidden;
             margin-top: 5px;
+            position: relative;
         }
 
         .quality-indicator {
             height: 100%;
             width: 0;
             transition: all 0.3s ease;
+            position: absolute;
+            left: 0;
+            top: 0;
         }
 
         .quality-text {
@@ -142,17 +146,17 @@
                 return;
             }
 
-            const confidence = assessment.confidence * 100;
-            indicator.style.width = `${confidence}%`;
+            // Always use the "good" probability for the width
+            const barWidth = assessment.probabilities.good * 100;
             
-            // Update quality indicator class
+            indicator.style.width = `${barWidth}%`;
             indicator.className = 'quality-indicator quality-' + assessment.quality;
             
             // Update label
             label.textContent = assessment.quality.charAt(0).toUpperCase() + assessment.quality.slice(1);
             
             // Update stats
-            stats.textContent = `Confidence: ${confidence.toFixed(1)}% (Good: ${(assessment.probabilities.good * 100).toFixed(1)}%, Bad: ${(assessment.probabilities.bad * 100).toFixed(1)}%)`;
+            stats.textContent = `Confidence in goodness: ${barWidth.toFixed(1)}% (Good: ${(assessment.probabilities.good * 100).toFixed(1)}%, Bad: ${(assessment.probabilities.bad * 100).toFixed(1)}%)`;
         }
     </script>
 </body>

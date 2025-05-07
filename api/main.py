@@ -101,7 +101,7 @@ def get_quality_assessment(probabilities) -> dict:
     """Convert model probabilities into quality assessment."""
     prob_diff = abs(probabilities[0] - probabilities[1])
     
-    if prob_diff < 0.2:  # Small probability differential
+    if prob_diff < 0.3:  # Small probability differential
         quality = "okay"
         confidence = 0.5
     else:
