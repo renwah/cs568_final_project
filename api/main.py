@@ -14,7 +14,7 @@ from pathlib import Path
 import pandas as pd
 import ast
 from google.generativeai import GenerativeModel, configure
-from typing import Optional
+from typing import Optional, List, Dict
 
 # Initialize FastAPI app
 app = FastAPI(title="Prompt Quality Assessment API")
@@ -62,6 +62,7 @@ class PromptRequest(BaseModel):
 class GeminiPromptRequest(BaseModel):
     text: str
     system_prompt: Optional[str] = None
+    history: Optional[List[Dict[str, str]]] = None
 
 def extract_features(text: str) -> np.ndarray:
     """Extract features from the input text using spaCy and textdescriptives."""
@@ -170,9 +171,21 @@ async def root():
 @app.post("/assess-gemini")
 async def assess_prompt_gemini(request: GeminiPromptRequest = Body(...)):
     try:
-        messages = [
-            {"role": "user", "parts": [request.text]}
-        ]
+        # Build message history for Gemini
+        messages = []
+        if request.history:
+            for msg in request.history:
+                if msg['role'] == 'user':
+                    messages.append({"role": "user", "parts": [msg['text']]})
+                elif msg['role'] == 'gemini':
+                    messages.append({"role": "model", "parts": [msg['text']]})
+        else:
+            messages = [
+                {"role": "user", "parts": [request.text]}
+            ]
+        # Always add the latest user message if not already present
+        if not messages or messages[-1]["role"] != "user":
+            messages.append({"role": "user", "parts": [request.text]})
         response = gemini_model.generate_content(messages)
         return {"gemini_assessment": response.text}
     except Exception as e:

@@ -113,11 +113,8 @@
 <body>
     <div class="chat-container">
         <h1>Prompt Quality Assessment</h1>
-        <!-- Gemini Output Section (now above prompt) -->
-        <div id="geminiOutputContainer" style="margin-bottom:20px;display:none;">
-            <h3>Gemini Output</h3>
-            <div id="geminiOutput" style="background:#f8f9fa;padding:12px;border-radius:8px;min-height:40px;max-height:350px;overflow-y:auto;"></div>
-        </div>
+        <!-- Chat Log Section (multi-turn chat) -->
+        <div id="chatLog" style="margin-bottom:20px;background:#f8f9fa;padding:12px;border-radius:8px;max-height:70vh;overflow-y:auto;"></div>
         <!-- Prompt Input Section (fixed at bottom) -->
         <div class="input-container" id="promptInputContainer">
             <div style="display:flex;gap:10px;align-items:flex-end;">
@@ -143,19 +140,34 @@
     <script>
         let assessmentTimeout;
         let apiPort;
+        let chatHistory = [];
 
         // Fetch configuration when page loads
         async function fetchConfig() {
             try {
-                // Use current host and protocol for config endpoint
                 const configResponse = await fetch(`${window.location.protocol}//${window.location.hostname}:${window.location.port}/config`);
                 const config = await configResponse.json();
                 apiPort = config.apiPort;
             } catch (error) {
                 console.error('Error fetching config:', error);
-                // Fallback to default port if config fetch fails
                 apiPort = 8000;
             }
+        }
+
+        function renderChatLog() {
+            const chatLog = document.getElementById('chatLog');
+            chatLog.innerHTML = '';
+            chatHistory.forEach(msg => {
+                const msgDiv = document.createElement('div');
+                msgDiv.style.marginBottom = '16px';
+                if (msg.role === 'user') {
+                    msgDiv.innerHTML = `<strong>You:</strong> <span>${msg.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`;
+                } else if (msg.role === 'gemini') {
+                    msgDiv.innerHTML = `<strong>Gemini:</strong> <span>${marked.parse(msg.text)}</span>`;
+                }
+                chatLog.appendChild(msgDiv);
+            });
+            chatLog.scrollTop = chatLog.scrollHeight;
         }
 
         async function assessPrompt() {
@@ -215,29 +227,32 @@
         }
 
         async function sendToGemini() {
-            const promptText = document.getElementById('promptInput').value.trim();
-            const outputContainer = document.getElementById('geminiOutputContainer');
-            const outputDiv = document.getElementById('geminiOutput');
-            if (!promptText) {
-                outputContainer.style.display = 'none';
-                return;
-            }
-            outputContainer.style.display = 'block';
-            outputDiv.textContent = 'Loading...';
+            const promptInput = document.getElementById('promptInput');
+            const promptText = promptInput.value.trim();
+            if (!promptText) return;
+            // Add user message to chat history
+            chatHistory.push({ role: 'user', text: promptText });
+            renderChatLog();
+            promptInput.value = '';
+            // Show loading for Gemini
+            chatHistory.push({ role: 'gemini', text: 'Loading...' });
+            renderChatLog();
             try {
                 const apiUrl = `${window.location.protocol}//${window.location.hostname}:${apiPort}/assess-gemini`;
+                // Send up to the last 10 messages for context (excluding the loading message)
+                const historyToSend = chatHistory.slice(-11, -1);
                 const response = await fetch(apiUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ text: promptText })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: promptText, history: historyToSend })
                 });
                 const data = await response.json();
-                // Render markdown as HTML using marked.js
-                outputDiv.innerHTML = marked.parse(data.gemini_assessment || 'No response from Gemini.');
+                // Replace last Gemini message (Loading...) with real response
+                chatHistory[chatHistory.length - 1] = { role: 'gemini', text: data.gemini_assessment || 'No response from Gemini.' };
+                renderChatLog();
             } catch (error) {
-                outputDiv.textContent = 'Error contacting Gemini.';
+                chatHistory[chatHistory.length - 1] = { role: 'gemini', text: 'Error contacting Gemini.' };
+                renderChatLog();
             }
         }
 
