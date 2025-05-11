@@ -108,16 +108,43 @@
                 padding-bottom: 100px;
             }
         }
+        .chat-bubble {
+            display: inline-block;
+            padding: 10px 16px;
+            border-radius: 16px;
+            margin-bottom: 8px;
+            max-width: 80%;
+            word-break: break-word;
+        }
+        .user-bubble {
+            background: #e3f0ff;
+            align-self: flex-end;
+        }
+        .gemini-bubble {
+            background: #f1f1f1;
+            align-self: flex-start;
+        }
+        .chat-message-row {
+            display: flex;
+            flex-direction: row;
+            margin-bottom: 8px;
+        }
+        .chat-message-row.user {
+            justify-content: flex-end;
+        }
+        .chat-message-row.gemini {
+            justify-content: flex-start;
+        }
     </style>
 </head>
 <body>
     <div class="chat-container">
         <h1>Prompt Quality Assessment</h1>
         <!-- Chat Log Section (multi-turn chat) -->
-        <div id="chatLog" style="margin-bottom:20px;background:#f8f9fa;padding:12px;border-radius:8px;max-height:70vh;overflow-y:auto;"></div>
+        <div id="chatLog" style="margin-bottom:20px;max-height:70vh;overflow-y:auto;"></div>
         <!-- Prompt Input Section (fixed at bottom) -->
-        <div class="input-container" id="promptInputContainer">
-            <div style="display:flex;gap:10px;align-items:flex-end;">
+        <div class="input-container" id="promptInputContainer" style="background:none;box-shadow:none;padding:20px 0 10px 0;">
+            <div style="display:flex;gap:10px;align-items:center;">
                 <textarea id="promptInput" placeholder="Enter your prompt here..." oninput="assessPrompt()" style="flex:1;"></textarea>
                 <button id="geminiButton" onclick="sendToGemini()" style="height:40px;min-width:120px;">Send to Gemini</button>
             </div>
@@ -158,14 +185,17 @@
             const chatLog = document.getElementById('chatLog');
             chatLog.innerHTML = '';
             chatHistory.forEach(msg => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'chat-message-row ' + (msg.role === 'user' ? 'user' : 'gemini');
                 const msgDiv = document.createElement('div');
-                msgDiv.style.marginBottom = '16px';
+                msgDiv.className = 'chat-bubble ' + (msg.role === 'user' ? 'user-bubble' : 'gemini-bubble');
                 if (msg.role === 'user') {
                     msgDiv.innerHTML = `<strong>You:</strong> <span>${msg.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`;
                 } else if (msg.role === 'gemini') {
                     msgDiv.innerHTML = `<strong>Gemini:</strong> <span>${marked.parse(msg.text)}</span>`;
                 }
-                chatLog.appendChild(msgDiv);
+                rowDiv.appendChild(msgDiv);
+                chatLog.appendChild(rowDiv);
             });
             chatLog.scrollTop = chatLog.scrollHeight;
         }
