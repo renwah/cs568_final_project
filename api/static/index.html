@@ -80,14 +80,50 @@
         .quality-bad { background-color: #ff4d4d; }
         .quality-okay { background-color: #ffd700; }
         .quality-good { background-color: #4CAF50; }
+
+        #promptInputContainer {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: white;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.07);
+            padding: 20px 0 10px 0;
+            z-index: 100;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .chat-container {
+            padding-bottom: 120px; /* space for fixed input */
+        }
+        #geminiOutput {
+            max-height: 350px;
+            overflow-y: auto;
+        }
+        @media (max-width: 600px) {
+            #promptInputContainer {
+                padding: 10px 0 5px 0;
+            }
+            .chat-container {
+                padding-bottom: 100px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="chat-container">
         <h1>Prompt Quality Assessment</h1>
-        <div class="input-container">
-            <textarea id="promptInput" placeholder="Enter your prompt here..." oninput="assessPrompt()"></textarea>
-            
+        <!-- Gemini Output Section (now above prompt) -->
+        <div id="geminiOutputContainer" style="margin-bottom:20px;display:none;">
+            <h3>Gemini Output</h3>
+            <div id="geminiOutput" style="background:#f8f9fa;padding:12px;border-radius:8px;min-height:40px;max-height:350px;overflow-y:auto;"></div>
+        </div>
+        <!-- Prompt Input Section (fixed at bottom) -->
+        <div class="input-container" id="promptInputContainer">
+            <div style="display:flex;gap:10px;align-items:flex-end;">
+                <textarea id="promptInput" placeholder="Enter your prompt here..." oninput="assessPrompt()" style="flex:1;"></textarea>
+                <button id="geminiButton" onclick="sendToGemini()" style="height:40px;min-width:120px;">Send to Gemini</button>
+            </div>
             <div class="quality-bar-container">
                 <div class="quality-text">
                     <span>Quality Assessment</span>
@@ -101,8 +137,26 @@
         </div>
     </div>
 
+    <!-- Add marked.js for markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
     <script>
         let assessmentTimeout;
+        let apiPort;
+
+        // Fetch configuration when page loads
+        async function fetchConfig() {
+            try {
+                // Use current host and protocol for config endpoint
+                const configResponse = await fetch(`${window.location.protocol}//${window.location.hostname}:${window.location.port}/config`);
+                const config = await configResponse.json();
+                apiPort = config.apiPort;
+            } catch (error) {
+                console.error('Error fetching config:', error);
+                // Fallback to default port if config fetch fails
+                apiPort = 8000;
+            }
+        }
 
         async function assessPrompt() {
             clearTimeout(assessmentTimeout);
@@ -116,7 +170,8 @@
             // Wait for 500ms after last keystroke before making API call
             assessmentTimeout = setTimeout(async () => {
                 try {
-                    const response = await fetch('http://localhost:8000/assess', {
+                    const apiUrl = `${window.location.protocol}//${window.location.hostname}:${apiPort}/assess`;
+                    const response = await fetch(apiUrl, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -158,6 +213,36 @@
             // Update stats
             stats.textContent = `Confidence in goodness: ${barWidth.toFixed(1)}% (Good: ${(assessment.probabilities.good * 100).toFixed(1)}%, Bad: ${(assessment.probabilities.bad * 100).toFixed(1)}%)`;
         }
+
+        async function sendToGemini() {
+            const promptText = document.getElementById('promptInput').value.trim();
+            const outputContainer = document.getElementById('geminiOutputContainer');
+            const outputDiv = document.getElementById('geminiOutput');
+            if (!promptText) {
+                outputContainer.style.display = 'none';
+                return;
+            }
+            outputContainer.style.display = 'block';
+            outputDiv.textContent = 'Loading...';
+            try {
+                const apiUrl = `${window.location.protocol}//${window.location.hostname}:${apiPort}/assess-gemini`;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: promptText })
+                });
+                const data = await response.json();
+                // Render markdown as HTML using marked.js
+                outputDiv.innerHTML = marked.parse(data.gemini_assessment || 'No response from Gemini.');
+            } catch (error) {
+                outputDiv.textContent = 'Error contacting Gemini.';
+            }
+        }
+
+        // Initialize configuration when page loads
+        document.addEventListener('DOMContentLoaded', fetchConfig);
     </script>
 </body>
 </html> 

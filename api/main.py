@@ -1,7 +1,9 @@
-from fastapi import FastAPI, HTTPException
+from dotenv import load_dotenv
+load_dotenv()
+from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 import joblib
 import numpy as np
@@ -11,9 +13,18 @@ import os
 from pathlib import Path
 import pandas as pd
 import ast
+from google.generativeai import GenerativeModel, configure
+from typing import Optional
 
 # Initialize FastAPI app
 app = FastAPI(title="Prompt Quality Assessment API")
+
+# Get port from environment variable or use default
+PORT = int(os.getenv('PORT', 8000))
+
+#configure gemini
+configure(api_key=os.getenv('GOOGLE_API_KEY')) # set this env variable elsewhere
+gemini_model = GenerativeModel('gemini-2.0-flash')
 
 # Add CORS middleware
 app.add_middleware(
@@ -47,6 +58,10 @@ except OSError:
 
 class PromptRequest(BaseModel):
     text: str
+
+class GeminiPromptRequest(BaseModel):
+    text: str
+    system_prompt: Optional[str] = None
 
 def extract_features(text: str) -> np.ndarray:
     """Extract features from the input text using spaCy and textdescriptives."""
@@ -117,6 +132,7 @@ def get_quality_assessment(probabilities) -> dict:
         }
     }
 
+
 @app.post("/assess")
 async def assess_prompt(request: PromptRequest):
     try:
@@ -140,6 +156,24 @@ async def assess_prompt(request: PromptRequest):
 async def health_check():
     return {"status": "healthy"}
 
+@app.get("/config")
+async def get_config():
+    """Endpoint to provide configuration to the frontend"""
+    return JSONResponse({
+        "apiPort": PORT
+    })
+
 @app.get("/")
 async def root():
     return FileResponse('static/index.html') 
+
+@app.post("/assess-gemini")
+async def assess_prompt_gemini(request: GeminiPromptRequest = Body(...)):
+    try:
+        messages = [
+            {"role": "user", "parts": [request.text]}
+        ]
+        response = gemini_model.generate_content(messages)
+        return {"gemini_assessment": response.text}
+    except Exception as e:
+        return {"gemini_assessment": f"Error: {str(e)}"}
