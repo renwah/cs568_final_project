@@ -9,6 +9,8 @@ A web-based tool that assesses the quality of prompts using machine learning and
 - Confidence scores and probabilities
 - Support for three quality levels: Good, Okay, and Bad
 - REST API for programmatic access
+- **Multi-turn chat with Google Gemini (Gemini 2.0 Flash) integration**
+- Markdown rendering for Gemini responses
 
 ## Technical Stack
 
@@ -42,7 +44,7 @@ A web-based tool that assesses the quality of prompts using machine learning and
    conda activate prompt-quality
    ```
 
-   Alternative setup without Conda:
+   Alternative setup without Conda (not recommended):
    ```bash
    # Create a virtual environment
    python -m venv venv
@@ -73,6 +75,22 @@ A web-based tool that assesses the quality of prompts using machine learning and
    ```
    http://localhost:8000
    ```
+
+6. **Set up your Gemini API key:**
+   - Sign up for access to Google Gemini (https://aistudio.google.com/app/apikey) and obtain your API key.
+   - In the `api` directory, create a `.env` file (you can copy from the provided `.env.example`):
+     ```bash
+     cp .env.example .env
+     ```
+   - Open `.env` and add your Gemini API key:
+     ```env
+     GOOGLE_API_KEY=your-gemini-api-key-here
+     ```
+   - (Optional) You can also set the `PORT` variable in `.env` if you want to run the server on a different port.
+
+7. **Run the app and chat with Gemini!**
+   - The web interface now supports multi-turn chat with Gemini, with context-aware responses and markdown rendering.
+   - Your prompt quality will still be assessed in real time as you type.
 
 ## API Endpoints
 
