@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prompt Quality Assessment</title>
+    <title>Gemini Chat Interface</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -36,50 +36,6 @@
             box-sizing: border-box;
             margin-bottom: 10px;
         }
-
-        .quality-bar-container {
-            margin-top: 10px;
-            padding: 10px;
-            border-radius: 8px;
-            background-color: #f8f9fa;
-        }
-
-        .quality-bar {
-            height: 8px;
-            border-radius: 4px;
-            background-color: #e0e0e0;
-            overflow: hidden;
-            margin-top: 5px;
-            position: relative;
-        }
-
-        .quality-indicator {
-            height: 100%;
-            width: 0;
-            transition: all 0.3s ease;
-            position: absolute;
-            left: 0;
-            top: 0;
-        }
-
-        .quality-text {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-            color: #666;
-            font-size: 14px;
-        }
-
-        .stats {
-            margin-top: 10px;
-            font-size: 14px;
-            color: #666;
-        }
-
-        /* Quality colors */
-        .quality-bad { background-color: #ff4d4d; }
-        .quality-okay { background-color: #ffd700; }
-        .quality-good { background-color: #4CAF50; }
 
         #promptInputContainer {
             position: fixed;
@@ -139,24 +95,14 @@
 </head>
 <body>
     <div class="chat-container">
-        <h1>Prompt Quality Assessment</h1>
+        <h1>Gemini Chat Interface</h1>
         <!-- Chat Log Section (multi-turn chat) -->
         <div id="chatLog" style="margin-bottom:20px;max-height:70vh;overflow-y:auto;"></div>
         <!-- Prompt Input Section (fixed at bottom) -->
         <div class="input-container" id="promptInputContainer" style="background:none;box-shadow:none;padding:20px 0 10px 0;">
             <div style="display:flex;gap:10px;align-items:center;">
-                <textarea id="promptInput" placeholder="Enter your prompt here..." oninput="assessPrompt()" style="flex:1;"></textarea>
+                <textarea id="promptInput" placeholder="Enter your prompt here..." style="flex:1;"></textarea>
                 <button id="geminiButton" onclick="sendToGemini()" style="height:40px;min-width:120px;">Send to Gemini</button>
-            </div>
-            <div class="quality-bar-container">
-                <div class="quality-text">
-                    <span>Quality Assessment</span>
-                    <span id="qualityLabel">Not assessed</span>
-                </div>
-                <div class="quality-bar">
-                    <div id="qualityIndicator" class="quality-indicator"></div>
-                </div>
-                <div id="stats" class="stats"></div>
             </div>
         </div>
     </div>
@@ -165,7 +111,6 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <script>
-        let assessmentTimeout;
         let apiPort;
         let chatHistory = [];
 
@@ -198,62 +143,6 @@
                 chatLog.appendChild(rowDiv);
             });
             chatLog.scrollTop = chatLog.scrollHeight;
-        }
-
-        async function assessPrompt() {
-            clearTimeout(assessmentTimeout);
-            const promptText = document.getElementById('promptInput').value.trim();
-            
-            if (promptText.length === 0) {
-                updateQualityBar(null);
-                return;
-            }
-
-            // Wait for 500ms after last keystroke before making API call
-            assessmentTimeout = setTimeout(async () => {
-                try {
-                    const apiUrl = `${window.location.protocol}//${window.location.hostname}:${apiPort}/assess`;
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ text: promptText })
-                    });
-
-                    const data = await response.json();
-                    updateQualityBar(data.assessment);
-                } catch (error) {
-                    console.error('Error:', error);
-                    updateQualityBar(null);
-                }
-            }, 500);
-        }
-
-        function updateQualityBar(assessment) {
-            const indicator = document.getElementById('qualityIndicator');
-            const label = document.getElementById('qualityLabel');
-            const stats = document.getElementById('stats');
-
-            if (!assessment) {
-                indicator.style.width = '0%';
-                indicator.className = 'quality-indicator';
-                label.textContent = 'Not assessed';
-                stats.textContent = '';
-                return;
-            }
-
-            // Always use the "good" probability for the width
-            const barWidth = assessment.probabilities.good * 100;
-            
-            indicator.style.width = `${barWidth}%`;
-            indicator.className = 'quality-indicator quality-' + assessment.quality;
-            
-            // Update label
-            label.textContent = assessment.quality.charAt(0).toUpperCase() + assessment.quality.slice(1);
-            
-            // Update stats
-            stats.textContent = `Confidence in goodness: ${barWidth.toFixed(1)}% (Good: ${(assessment.probabilities.good * 100).toFixed(1)}%, Bad: ${(assessment.probabilities.bad * 100).toFixed(1)}%)`;
         }
 
         async function sendToGemini() {
